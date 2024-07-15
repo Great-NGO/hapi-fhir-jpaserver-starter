@@ -1,7 +1,7 @@
 version: "3"
 services:
   hapi-fhir-jpaserver-start:
-    image: hapiproject/hapi:v5.3.0
+    build: .
     container_name: hapi-fhir-jpaserver-start
     restart: on-failure
     environment:
@@ -11,9 +11,6 @@ services:
       SPRING_DATASOURCE_DRIVERCLASSNAME: "org.postgresql.Driver"
     ports:
       - "8080:8080"
-    depends_on:
-      - hapi-fhir-postgres
-
   hapi-fhir-postgres:
     image: postgres:14-alpine
     container_name: hapi-fhir-postgres
@@ -24,9 +21,5 @@ services:
       POSTGRES_PASSWORD: "admin"
     volumes:
       - hapi-fhir-postgres:/var/lib/postgresql/data
-
 volumes:
   hapi-fhir-postgres:
-    driver: local
-
-

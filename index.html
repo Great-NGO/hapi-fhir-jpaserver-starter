@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FHIR Patient Management</title>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            text-align: center;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+
+        .section1,
+        .section2 {
+            margin: 0 auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 20px;
+        }
+
+        input,
+        select,
+        button {
+            padding: 10px;
+            margin: 10px 0;
+            width: 100%;
+            box-sizing: border-box;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        table,
+        th,
+        td {
+            border: 1px solid black;
+        }
+
+        th,
+        td {
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        .loader-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.8);
+            z-index: 1000;
+        }
+
+        .loader {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="loader-container" id="loader">
+        <div class="loader"></div>
+    </div>
+
+    <main class="container">
+        <section class="section1">
+
+            <h1>i4 FHIR Patient Management</h1>
+            <h2>Add New Patient</h2>
+            <form method="post" id="patientForm">
+                <div>
+                    <label for="firstName">First Name:</label>
+                    <input type="text" id="firstName" name="firstName" required>
+                </div>
+                <div>
+
+                    <label for="lastName">Last Name:</label>
+                    <input type="text" id="lastName" name="lastName" required>
+                </div>
+                <div>
+                    <label for="gender">Gender:</label>
+                    <select id="gender" name="gender" required>
+                        <option>Select Gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="birthDate">Date of Birth:</label>
+                    <input type="date" id="birthDate" name="birthDate" required><br>
+                    <button type="submit">Add Patient</button>
+                </div>
+            </form>
+
+        </section>
+
+        <section class="section2">
+            <h2>All Patients</h2>
+            <table id="patientsTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>First Name</th>
+                        <th>Last Name</th>
+                        <th>Gender</th>
+                        <th>Date of Birth</th>
+                    </tr>
+                </thead>
+                <tbody class="patientsTableBody">
+                    <!-- Patient data will be inserted here -->
+                </tbody>
+            </table>
+        </section>
+
+    </main>
+
+    <script>
+        const apiUrl = 'http://localhost:8080/fhir/Patient';
+        const loader = document.getElementById('loader');
+
+        async function fetchPatients() {
+            // To Show Loader
+            loader.style.display = 'flex';
+            const response = await fetch(apiUrl);
+            const data = await response.json();
+            console.log("The data ", data);
+            const patientsTable = document.getElementsByClassName('patientsTableBody')[0];
+            patientsTable.innerHTML = '';
+
+            /** 
+             * The data we are looking for that the response returns is in the entry property which is an array
+             * We loop through the array
+             * Inside each array we have an object containing 'fullUrl' property, 'resource' property, and 'search' property
+             * We are interested in the 'resource' property as it contains the properties and values we want to showcase on our frontend
+             * e.g.
+             * "resource": {
+                "resourceType": "Patient",
+                "id": "1",
+                "meta": {
+                    "versionId": "1",
+                    "lastUpdated": "2024-07-02T13:30:35.127+00:00",
+                    "source": "#vpUBE1XCVVVfMGLg"
+                },
+                "name": [
+                    {
+                        "use": "official",
+                        "family": "Doe",
+                        "given": [
+                            "John"
+                        ]
+                    }
+                ],
+                "gender": "male",
+                "birthDate": "1980-01-01"
+            },
+            As from the above example, we extract the name (given name which is the first name and the family name which is the patients last name), gender and DOB
+             * 
+            */
+
+            //If there is no entry or data returned (total number of data is 0) then show that there is no data inserted
+            if (!data?.entry) {
+                loader.style.display = 'none';
+
+                const row = patientsTable.insertRow();
+                row.innerHTML = `<h3>No Data Inserted Yet!</h3>`;
+
+            }
+            data.entry.forEach(entry => {
+                const patient = entry.resource;
+                const row = patientsTable.insertRow();
+                row.insertCell(0).innerText = patient.id;
+                row.insertCell(1).innerText = patient.name[0].given.join(' ');
+                row.insertCell(2).innerText = patient.name[0].family;
+                row.insertCell(3).innerText = patient.gender;
+                row.insertCell(4).innerText = patient.birthDate;
+            });
+
+            loader.style.display = 'none';
+        }
+
+        document.getElementById('patientForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            let firstName = document.getElementById('firstName').value;
+            let lastName = document.getElementById('lastName').value;
+            let gender = document.getElementById('gender').value;
+            let birthDate = document.getElementById('birthDate').value;
+
+            const patientData = {
+                resourceType: 'Patient',
+                name: [{ use: 'official', given: [firstName], family: lastName }],
+                gender: gender,
+                birthDate: birthDate
+            };
+
+            loader.style.display = 'flex';
+            const response = await fetch(apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/fhir+json'
+                },
+                body: JSON.stringify(patientData)
+            });
+
+            console.log("The response ", response);
+            if (response.ok) {
+                alert("Patient added successfully.");
+                fetchPatients();  // Refresh the patient list
+
+                // Clear the input fields
+                document.getElementById('firstName').value = '';
+                document.getElementById('lastName').value = '';
+                document.getElementById('gender').value = '';
+                document.getElementById('birthDate').value = '';
+
+            } else {
+                console.error('Failed to add patient');
+                alert("Failed to add patient");
+            }
+            loader.style.display = 'none';
+        });
+
+        fetchPatients();
+    </script>
+</body>
+
+</html>
